@@ -24,6 +24,7 @@
     "content:check": "node --import tsx scripts/validate-content.ts",
     "content:ready": "node --import tsx scripts/validate-content-readiness.ts",
     "test": "vitest run",
+    "test:functional": "vitest run --exclude src/docs/documentation.test.ts",
     "test:container": "node scripts/verify-container-runtime.mjs",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
