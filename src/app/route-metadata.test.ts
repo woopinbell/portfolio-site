@@ -2,6 +2,10 @@ import { describe, expect, it } from "vitest";
 
 import { getPortfolioContent } from "@/lib/portfolio";
 
+// [INTV:TRAP] `import { X as Y }`: 여기서 쓰는 리네이밍 import — 8개 페이지 파일이 전부 같은
+// 이름(generateMetadata)으로 export하기 때문에, 한 파일에서 동시에 가져오려면 이렇게 각기 다른
+// 이름을 붙여줘야 충돌하지 않는다(리네이밍 없이 그대로 import하면 마지막에 import한 것으로 전부
+// 덮어써져 컴파일 에러가 난다).
 import { generateMetadata as getAboutMetadata } from "./about/page";
 import { generateMetadata as getContactMetadata } from "./contact/page";
 import { generateMetadata as getInterviewMapMetadata } from "./interview-map/page";
@@ -19,6 +23,10 @@ if (!project) {
 }
 
 describe("route metadata exports", () => {
+  // [INTV:ARCH] it.each에 넘기는 각 튜플의 세 번째 값이 함수(generateMetadata 구현 자체)라는
+  // 점이 특이하다 — 보통은 데이터값만 넘기지만, vitest는 무엇이든 넘길 수 있어서 "여러 페이지의
+  // 서로 다른 함수를, 같은 검증 로직 하나로" 돌리는 데 함수 자체를 데이터처럼 쓴 것(8개 페이지마다
+  // 거의 똑같은 assertion을 반복해서 적는 대신, 표 하나로 통합).
   it.each([
     ["/", content.site.title, getHomeMetadata],
     [

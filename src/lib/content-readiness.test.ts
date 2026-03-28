@@ -1,3 +1,4 @@
+// vitest 기본 문법은 lib/portfolio.test.ts 상단 주석 참고.
 import { loadPortfolioSource } from "@/lib/content-loader";
 import { describe, expect, it } from "vitest";
 
@@ -21,6 +22,11 @@ function captureReadinessError(run: () => unknown) {
   return caught as PortfolioReadinessError;
 }
 
+// [INTV:ARCH] content-readiness.ts의 placeholderMarkers가 잡아내는 "견본 문구"들을 전부
+// 그럴듯한 실제 값으로 치환하는 테스트 전용 헬퍼 — 이 저장소에 실제로 커밋된 콘텐츠(template
+// 상태 그대로)만으로는 production 검증을 통과할 수 없으므로, "production 모드에서 실제로
+// 통과하는 콘텐츠는 이런 모양이다"를 테스트 안에서 직접 만들어내기 위한 것. 재귀적으로 모든
+// 문자열/배열/객체를 훑는 구조는 content-readiness.ts의 collectPlaceholderIssues와 같은 패턴.
 function replaceTemplateMarkers(value: unknown): unknown {
   if (typeof value === "string") {
     return value
@@ -55,6 +61,9 @@ function replaceTemplateMarkers(value: unknown): unknown {
   return value;
 }
 
+// [INTV:ARCH] 위 replaceTemplateMarkers로 문구를 치환한 뒤, zod 스키마 검증(assetPath 형식
+// 등)까지 통과하도록 이미지/다운로드 경로나 프로젝트 링크 같은 필드도 실제 값처럼 보이게 채워
+// 넣어 "완전히 준비된" 콘텐츠를 만든다.
 function createProductionReadyContent() {
   const content = replaceTemplateMarkers(
     structuredClone(loadPortfolioSource()),

@@ -4,6 +4,14 @@ import type {
   ProjectMetric,
 } from "../content-schema";
 
+// [INTV:ARCH] 이 파일 전체는 src/content/*.json 각 파일이 실제로 어떤 모양인지를 TS 타입으로
+// 정의해둔 "콘텐츠 스키마"다 — 대부분 필드 목록만 나열하는 평범한 타입 선언이라 개별 타입마다
+// 주석을 달지 않았고, 아래처럼 TS 특유의 표현(재노출/인덱스 접근 타입 등)이 쓰인 곳에만 주석을
+// 달았다.
+// [INTV:TRAP] `export type { ... } from`처럼 type 키워드가 붙은 재노출은 "값"이 아니라 "타입 선언"만
+// 그대로 다시 내보낸다는 뜻 — 일반 export와 구분해두면 번들러가 타입 전용 import를 실제 런타임
+// 코드에서 안전하게 제거할 수 있다(type 키워드 없이 재노출하면, 번들러가 이게 값인지 타입인지
+// 확신 못 해 불필요한 런타임 import가 번들에 남을 수 있다).
 export type {
   PortfolioProjectSource,
   ProjectGroup,
@@ -209,6 +217,11 @@ export type TerminalPresentation = {
   commands: TerminalCommand[];
 };
 
+// [INTV:ARCH] 인덱스 접근 타입(Indexed Access Type): 객체 타입 뒤에 `["필드명"]`을 붙이면 그 필드
+// 하나의 타입만 뽑아낼 수 있다. PresentationContentSource라는 큰 스키마 타입 전체를 다시 선언하지
+// 않고, 그 안의 home 필드 타입만 재사용하는 것(content-schema.ts에서 필드 구조가 바뀌면 이 타입도
+// 자동으로 따라간다 — z.infer와 같은 "하나의 소스에서 파생" 철학). 아래 pages.xxx 계열 타입들도
+// 전부 같은 방식이라 반복 설명하지 않는다.
 export type HomePresentation = PresentationContentSource["home"];
 
 export type ProjectGroupPresentation = {
@@ -439,6 +452,9 @@ export type PortfolioContent = {
   resume: ResumeContent;
 };
 
+// [INTV:TRAP] Next.js 최신 버전에서 페이지 컴포넌트의 searchParams prop은 동기 객체가 아니라
+// Promise로 전달된다(src/app 하위 각 page.tsx에서 반복해서 await searchParams로 풀어쓰는 이유) —
+// 그 타입을 여기 한 곳에 정의해 공유한다.
 export type RouteSearchParams = Promise<
   Record<string, string | string[] | undefined>
 >;

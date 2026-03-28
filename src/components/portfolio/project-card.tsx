@@ -11,6 +11,8 @@ import { ProjectCardLinks } from "./project-links";
 import { ProjectScreenshot } from "./project-screenshot";
 import { StackList } from "./stack-list";
 
+// [INTV:ARCH] 여러 작은 컴포넌트(스크린샷, 배지, 스택 목록, 링크 목록)를 한 장의 프로젝트
+// 카드로 조합하는 컴포넌트.
 export function ProjectCard({
   contentDebug,
   homeTemplate,
@@ -32,6 +34,8 @@ export function ProjectCard({
   return (
     <article
       className={`project-card motion-card group grid gap-5 rounded-lg border border-line bg-surface p-3 transition duration-300 hover:border-accent/50 hover:bg-surface-hover ${
+        // featured 변형만 데스크톱에서 스크린샷:본문 비율을 가진 2열 레이아웃으로 바뀐다
+        // (강조 카드를 더 크게 보여주기 위함)
         isFeatured ? "lg:grid-cols-[1.15fr_0.85fr] lg:items-stretch" : ""
       }`}
     >

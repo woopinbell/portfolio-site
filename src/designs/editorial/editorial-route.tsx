@@ -24,6 +24,12 @@ import type {
 
 import styles from "./editorial-route.module.css";
 
+// [INTV:ARCH] 이 파일은 "editorial" 테마의 8개 라우트 전부와 공용 셸(EditorialShell)을 한
+// 파일에 모아둔 구조 — classic/design 테마처럼 라우트별로 파일을 쪼개고
+// components/portfolio/site-shell.tsx의 PageShell을 재사용하는 대신, 이 테마는 자체 헤더/푸터
+// (EditorialShell)를 독자적으로 구현해 완전히 다른 마크업/스타일 체계(잡지 레이아웃)를 자유롭게
+// 쓸 수 있게 했다 — 테마마다 이 구조 자체가 통일돼 있지 않다는 점이 특징(시각적으로 크게 갈라지는
+// 테마일수록 공유 셸에 맞추기보다 독립 구현이 더 자유롭다는 트레이드오프).
 export type EditorialRouteName =
   | "home"
   | "projects"
@@ -44,6 +50,8 @@ export type EditorialRouteProps = {
 
 const DESIGN_ID = "editorial" as const;
 
+// [INTV:ARCH] 마스트헤드(상단 헤더)에 "VOL. 03" 처럼 표시할, 라우트별 고정된 2자리 호수(volume)
+// 번호 — 잡지 컨셉을 위한 장식용 데이터.
 const routeNumbers: Record<EditorialRouteName, string> = {
   home: "00",
   projects: "01",
@@ -74,6 +82,9 @@ function getProjectTags(project: PortfolioProject) {
   return project.tags.slice(0, 4);
 }
 
+// [INTV:ARCH] components/portfolio/content-hint.tsx의 ContentHint와 같은 역할(콘텐츠 디버그
+// 모드에서 출처 파일을 보여줌)을 하는, editorial 테마 전용 버전 — 공용 컴포넌트를 재사용하지
+// 않고 이 테마의 스타일(styles.debugNote)에 맞춰 따로 구현했다.
 function DebugNote({
   children,
   enabled,
@@ -90,6 +101,12 @@ function DebugNote({
   return <small className={styles.debugNote}>{prefix} · {children}</small>;
 }
 
+// [INTV:PERF] 이 컴포넌트를 빼면 나머지 컴포넌트/테마 대부분이 평범한 <img>를 쓰는 것과 달리,
+// editorial 테마는 next/image의 <Image>를 쓴다 — Next가 서버에서 이미지를 요청 시점에 리사이즈/
+// 최적화된 포맷으로 변환해주고, width/height(원본 비율 계산용, 실제 렌더 크기가 아님)와
+// sizes(뷰포트 폭에 따라 어떤 크기를 받을지 브라우저에 알려주는 힌트)를 지정해야 레이아웃 밀림
+// 없이 반응형으로 동작한다. priority는 next/image가 "화면 최상단이라 LCP(최초 콘텐츠 렌더링)
+// 대상"이라고 표시하는 옵션 — 다른 컴포넌트의 loading="eager" 수동 구현과 같은 목적.
 function EditorialImage({
   caption,
   className = "",
@@ -318,6 +335,14 @@ function ProjectIndexItem({
   );
 }
 
+// [INTV:TRADE_OFF] 이 아래 라우트 컴포넌트들은 classic/design 테마의
+// `if (content.route !== "x") return null;` 런타임 체크 대신 `content as HomeViewModel`처럼
+// TS의 타입 단언(as)으로 타입을 강제한다. 단언은 컴파일러에게 "내가 이 타입이 맞다고 보장한다"고
+// 말하는 것이라, 실제로 route가 어긋난 데이터가 들어와도 런타임에서 막아주지 않는다 —
+// EditorialRoute는 항상 registry.tsx가 올바른 route/viewModel 짝을 넘겨준다는 전제로 안전성을
+// 타입 좁히기 대신 단언에 맡긴 것(런타임 체크 코드를 줄이는 대가로, 이 전제가 깨지면 컴파일
+// 타임에 못 잡고 런타임에 undefined 참조로 드러난다). 이 패턴은 이 파일의 라우트 함수 전체에
+// 반복되므로 이후 다시 설명하지 않는다.
 function HomeRoute({ content, contentDebug }: EditorialRouteProps) {
   const viewModel = content as HomeViewModel;
   const featured = viewModel.featuredProjects;
@@ -329,6 +354,9 @@ function HomeRoute({ content, contentDebug }: EditorialRouteProps) {
   const sharedCopy = content.presentation.home.shared;
   const ui = content.presentation.ui;
 
+  // [INTV:ARCH] classic/design 테마의 HomeSection과 같은 목적(홈 섹션 순서를 콘텐츠 데이터로
+  // 결정)이지만, 여기서는 if-체인 대신 switch문으로 section 값을 분기한다 — 결과는 동일한 콘텐츠
+  // 기반 설계.
   return (
     <>
       {homeCopy.sections.map((section) => {
@@ -587,6 +615,10 @@ function EvidenceList({
     return <p className={styles.emptyCopy}>{emptyLabel}</p>;
   }
 
+  // [INTV:TRAP] components/portfolio/reveal.tsx의 Reveal에서 설명한 것과 같은 "변수에 태그명을
+  // 담아 렌더링 태그를 고르는" 패턴 — 여기서는 대문자 변수(List)에 문자열 태그명을 담아 순서가
+  // 중요한 목록(ol)과 아닌 목록(ul)을 전환한다(소문자 변수명으로 하면 React가 HTML 태그가 아닌
+  // 값으로 해석하지 못해 실패한다 — StatCard.tsx의 Icon과 같은 대문자 규칙).
   const List = ordered ? "ol" : "ul";
 
   return (
@@ -606,6 +638,11 @@ function ProjectDetailRoute({ content, contentDebug, project }: EditorialRoutePr
   const copy = content.presentation.pages.projectDetail;
   const ui = content.presentation.ui;
 
+  // [INTV:EDGE] project는 DesignRouteProps에서 route가 "project-detail"일 때만 registry.tsx가
+  // 채워주는 선택적 필드다. 정상 흐름이라면 이 라우트가 렌더링될 때 항상 값이 있어야 하지만, TS
+  // 타입상 undefined일 수 있어서 "찾을 수 없음" 안내 화면으로 방어적으로 처리해둔 것 — 위에서
+  // 설명한 as 단언과 달리 이 값은 실제로 런타임 체크를 거친다(존재하지 않는 프로젝트 id로 직접
+  // URL 접근했을 때의 방어).
   if (!project) {
     return (
       <section className={styles.missingPage}>
@@ -1398,6 +1435,9 @@ function InterviewMapRoute({ content, contentDebug }: EditorialRouteProps) {
   );
 }
 
+// [INTV:ARCH] classic/index.tsx, design/index.tsx의 라우터 switch와 같은 역할 — 다만 이 테마는
+// 별도 파일로 안 쪼개고 이 함수 하나로 처리한 뒤, 아래 EditorialRoute에서 EditorialShell로 감싸
+// 최종 export한다.
 function renderRoute(props: EditorialRouteProps) {
   switch (props.route) {
     case "home":

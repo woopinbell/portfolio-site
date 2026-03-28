@@ -10,6 +10,7 @@ import {
 import { createJourneyViewModel } from "@/lib/portfolio/view-models";
 import { createRouteMetadata } from "@/lib/site-metadata";
 
+// [INTV:ARCH] about/page.tsx와 동일한 구조라 세부 주석은 그쪽 참고.
 export function generateMetadata(): Metadata {
   const content = getPortfolioContent();
   if (!isSitePageEnabled("journey", content)) notFound();

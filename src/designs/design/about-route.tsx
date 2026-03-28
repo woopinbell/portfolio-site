@@ -18,6 +18,8 @@ import {
 import type { DesignRouteProps } from "@/designs/types";
 import { createDesignShellProps } from "@/designs/shell-props";
 
+// [INTV:ARCH] designs/classic/about-route.tsx와 구조가 동일 (activeTemplate만 "design") —
+// 같은 뷰 모델/셸 조립 로직을 테마별로 재사용하되 렌더링 스타일만 갈아끼우는 패턴.
 export default function AboutRoute({
   content,
   contentDebug,

@@ -1,3 +1,4 @@
+// describe/it/expect 등 vitest 기본 문법은 lib/portfolio.test.ts 상단 주석 참고.
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
@@ -107,6 +108,14 @@ describe("portfolio route view models", () => {
     }
   });
 
+  // [INTV:EDGE] 특이한 테스트 방식: 함수를 호출해서 "동작"을 검증하는 대신, view-models.ts
+  // 소스 코드 자체를 텍스트로 읽어 정규식으로 검사한다 — "content 전체를 스프레드(...content)
+  // 해서 뷰 모델을 만들지 말 것", "PortfolioContent 타입을 통째로 교차시키지 말 것" 같은 규칙은
+  // 런타임 동작만 봐서는 어겼는지 확인하기 어렵다(스프레드로 다 넣어도 겉보기 결과가 비슷할 수
+  // 있음). 그래서 구현 방식 자체를 소스 코드 레벨에서 강제하는 "아키텍처 규칙 테스트" —
+  // view-models.ts 상단에서 설명한 "필요한 필드만 노출"이라는 설계 의도를 코드로 못 박아둔 것
+  // (design-switcher.test.tsx의 소스 텍스트 검사, local-fonts.test.ts의 파일 존재 검사와 같은
+  // 계열).
   it("does not build route models by spreading the full content object", () => {
     const source = readFileSync(
       resolve(process.cwd(), "src/lib/portfolio/view-models.ts"),

@@ -20,6 +20,9 @@ import type {
 import type { DesignRouteProps } from "@/designs/types";
 import styles from "./cinematic.module.css";
 
+// [INTV:ARCH] brutalist-route.tsx, editorial-route.tsx와 같은 "단일 파일 테마" 구조(자체 셸,
+// `as` 타입 단언 패턴)라 그쪽 주석을 참고하고 여기서는 이 파일에서만 나오는 새로운 기법 위주로
+// 주석을 단다.
 function routeHref(href: string, contentDebug = false) {
   return getTemplateHref(href, "cinematic", { contentDebug });
 }
@@ -246,6 +249,12 @@ function HomeView({ content, contentDebug }: DesignRouteProps) {
   const lead = viewModel.leadProject;
   const copy = content.presentation.home.cinematic;
   const ui = content.presentation.ui;
+  // [INTV:ARCH] 다른 테마들의 홈 섹션 처리(if-체인/switch로 sectionId를 분기)와 달리, 여기서는
+  // 아예 "섹션 id → 이미 만들어진 JSX" 매핑 객체를 먼저 만들어두고 마지막에 copy.sections 순서대로
+  // 골라 쓴다.
+  // [INTV:ARCH] `(typeof copy.sections)[number]`는 "copy.sections 배열 타입에서 원소 하나의
+  // 타입"을 뽑아내는 TS 관용구 — 문자열 리터럴을 따로 타입으로 선언하지 않고 실제 데이터 배열의
+  // 타입에서 그대로 끌어와 재사용하는 방식.
   const sectionNodes: Record<(typeof copy.sections)[number], React.ReactNode> = {
     hero: (
       <section className={styles.hero}>
@@ -322,6 +331,10 @@ function HomeView({ content, contentDebug }: DesignRouteProps) {
     ),
   };
 
+  // [INTV:TRAP] Fragment에 key를 주는 이유: map 반복에는 React가 각 항목을 구분할 key가 필요한데,
+  // 여기서는 실제 DOM에 <div> 같은 불필요한 감싸는 태그를 추가하고 싶지 않다 — Fragment는 key를
+  // 받을 수 있는 유일한 "태그 없는" 컨테이너라 이럴 때 쓴다(단순히 단축 문법 <>...</>로 쓰면 key를
+  // 줄 수 없어, 이 경우엔 반드시 <Fragment key={...}>로 풀어써야 한다).
   return (
     <>
       {copy.sections.map((sectionId) => (

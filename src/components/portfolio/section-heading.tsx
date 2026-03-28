@@ -1,5 +1,8 @@
 import { ContentHint } from "./content-hint";
 
+// [INTV:ARCH] 여러 페이지에서 반복되는 "섹션 제목 + 설명" 레이아웃을 하나로 통일한 컴포넌트.
+// body/contentHint는 없을 수도 있어 선택적으로만 렌더링한다(contentHint 동작은 content-hint.tsx
+// 참고).
 export function SectionHeading({
   body,
   contentDebug,

@@ -14,6 +14,8 @@ import {
 import type { DesignRouteProps } from "@/designs/types";
 import { createDesignShellProps } from "@/designs/shell-props";
 
+// [INTV:TRAP] route 타입 좁히기 패턴은 home-route.tsx에서 설명한 것과 동일 — PortfolioRouteViewModel
+// 판별 유니언을 route 값으로 좁혀야 이 라우트 전용 필드에 안전하게 접근할 수 있다.
 export default function ProjectsRoute({
   content,
   contentDebug,
@@ -72,6 +74,9 @@ function ClassicProjectsView({
 }) {
   const leadProject = featuredProjects[0];
   const copy = pageCopy.classic;
+  // [INTV:ARCH] 카테고리(문자열) → 설명 문구를 빠르게 찾기 위한 Map. groupedProjects는 [카테고리,
+  // 프로젝트배열] 튜플의 배열(Object.entries 스타일 구조)이라 뒤에서 map(([category, items]) => ...)
+  // 로 구조분해해 꺼내 쓴다.
   const groupCopy = new Map(pageCopy.groups.map((group) => [group.category, group.body]));
   const counts = {
     curriculumCount,
@@ -106,6 +111,10 @@ function ClassicProjectsView({
                   <dt className="text-xs font-semibold uppercase text-muted">
                     {stat.label}
                   </dt>
+                  {/* [INTV:ARCH] stat.countKey는 콘텐츠 JSON에 적힌 문자열("curriculumCount" 등)
+                      이고, 그 값을 그대로 counts 객체의 키로 써서 어느 숫자를 보여줄지 콘텐츠
+                      쪽에서 고를 수 있게 했다 — 통계 카드 종류/순서를 코드 수정 없이 콘텐츠만으로
+                      바꿀 수 있는 설계. */}
                   <dd className="mt-1 text-2xl font-semibold text-foreground">
                     {counts[stat.countKey]}
                   </dd>

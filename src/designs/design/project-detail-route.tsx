@@ -15,6 +15,7 @@ import {
 import { createDesignShellProps } from "@/designs/shell-props";
 import type { DesignRouteProps } from "@/designs/types";
 
+// [INTV:ARCH] designs/classic/project-detail-route.tsx와 구조가 동일 (activeTemplate만 "design").
 export default function ProjectDetailRoute({
   content,
   contentDebug,

@@ -1,3 +1,4 @@
+// vitest 기본 문법은 lib/portfolio.test.ts 상단 주석 참고.
 import siteJson from "@/content/site.json";
 import { describe, expect, it } from "vitest";
 
@@ -93,6 +94,10 @@ describe("sitemap", () => {
     if (!content.site.pages) {
       throw new Error("Sitemap test requires explicit page availability.");
     }
+    // [INTV:EDGE] content.site.pages를 그대로 쓰지 않고 interviewMap만 false로 덮어써서 전달한다
+    // — 이렇게 하면 "sitemap이 비활성화된 페이지를 실제로 제외하는가"를 현재 콘텐츠 설정값에
+    // 의존하지 않고 항상 같은 방식으로 검증할 수 있다(interviewMap이 site.json에서 기본적으로
+    // true든 false든 이 테스트의 통과 여부가 달라지지 않는다).
     const sitemap = createSitemap({
       content: {
         ...content,
@@ -165,6 +170,11 @@ describe("structured data", () => {
     expect(structuredData).not.toHaveProperty("aggregateRating");
   });
 
+  // [INTV:EDGE] site-metadata.ts가 <, >, & 를 \uXXXX로 이스케이프하는 XSS 방어 로직의 핵심
+  // 회귀 테스트 — "</script>" 라는 값이 JSON.stringify만 거쳐 dangerouslySetInnerHTML에 그대로
+  // 박히면 실제 <script> 태그를 조기 종료시켜 뒤에 오는 내용을 임의 실행 가능한 마크업으로 만들 수
+  // 있는데(스크립트 태그 브레이크아웃), 그 문자열이 유니코드 이스케이프 형태로 안전하게 바뀌는지만
+  // 확인하면 충분하므로 전체 JSON-LD 구조가 아니라 이 좁은 입력 하나로 검증을 압축했다.
   it("escapes markup-significant characters before embedding JSON-LD", () => {
     expect(serializeStructuredData({ value: "</script>" })).toContain(
       "\\u003c/script\\u003e",

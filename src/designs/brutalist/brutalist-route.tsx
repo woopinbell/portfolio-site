@@ -22,6 +22,10 @@ import type {
 import type { DesignRouteProps } from "@/designs/types";
 import styles from "./brutalist.module.css";
 
+// [INTV:ARCH] 이 파일은 designs/editorial/editorial-route.tsx와 같은 성격의 "단일 파일 테마"다
+// — PageShell을 재사용하지 않고 자체 셸(BrutalistShell)을 구현하고, route별 뷰 컴포넌트를
+// `content as XViewModel` 타입 단언으로 처리하는 패턴까지 editorial과 동일하니 그쪽 주석을
+// 참고하고 여기서는 반복 설명하지 않는다.
 const DESIGN_ID = "brutalist" as const;
 
 type CopyTemplateToken =
@@ -38,6 +42,10 @@ function brutalistHref(path: string, contentDebug: boolean) {
   });
 }
 
+// [INTV:ARCH] components/portfolio/animated-terminal.tsx의 formatTerminalLine과 같은 목적
+// (문자열 안의 {token}을 실제 값으로 치환)이지만, 여기서는 토큰 이름을 CopyTemplateToken 유니언
+// 타입으로 제한해 오타를 컴파일 단계에서 잡아준다 — reduce로 values 객체의 각 [토큰, 값] 쌍을
+// 순서대로 template 문자열에 적용해나가는 방식.
 function renderCopyTemplate(
   template: string,
   values: Partial<Record<CopyTemplateToken, string>>,
@@ -792,6 +800,9 @@ function ProjectMedia({
   return (
     <figure className={styles.mediaFrame}>
       {label ? <figcaption>{label}</figcaption> : null}
+      {/* [INTV:ARCH] next/image의 fill 모드: editorial 테마처럼 width/height로 고정 비율을 주는
+          대신, 부모 요소(.mediaInner, CSS에서 position:relative + 정해진 크기를 가짐)를 꽉
+          채우도록 이미지를 채운다 — 부모 크기가 이미 반응형으로 정해져 있을 때 편리한 방식. */}
       <div className={styles.mediaInner}>
         <Image
           alt={image.alt}
@@ -846,6 +857,10 @@ function ActionLink({
   href: string;
   isExternal?: boolean;
 }) {
+  // [INTV:EDGE] 콘텐츠가 명시한 external 플래그뿐 아니라, href 형태(http(s):// 로 시작하거나
+  // mailto:) 자체로도 외부 링크인지 한 번 더 추론한다 — content-link.tsx의 ContentLinkView는
+  // link.external 플래그만 믿는 반면, 이 컴포넌트는 footer 링크처럼 플래그가 없을 수도 있는 href
+  // 문자열까지 다루기 위한 방어적 판별.
   const external = isExternal || /^https?:\/\//.test(href) || href.startsWith("mailto:");
 
   if (external) {
@@ -1546,6 +1561,10 @@ function InterviewMapView({
                       </div>
                       <div className={styles.answerGrid}>
                         {item.answers.some((answer) => answer.project) ? (
+                          // [INTV:ARCH] flatMap은 map처럼 각 요소를 변환하면서, 동시에 빈
+                          // 배열([])을 반환하면 그 항목을 결과에서 완전히 제외시킬 수 있다 —
+                          // project가 없는 답변은 렌더링하지 않고 건너뛰는 "매핑 + 필터링"을
+                          // map+filter 두 번 대신 한 번의 순회로 처리하는 방식.
                           item.answers.flatMap((answer, answerIndex) => {
                             const project = answer.project;
 

@@ -1,3 +1,10 @@
+/* [INTV:ARCH] "editorial" 테마 전용 CSS Module — 잡지 지면을 흉내 낸 디자인이라 대부분의 규칙이
+   12칸 그리드 위에 요소를 정밀 배치하고(grid-column: 시작 / 끝), 한글용 세리프 폰트
+   (--font-noto-serif-kr, layout.tsx에서 조건부로 로드됨)와 산세리프를 용도별로 섞어 쓰는
+   타이포그래피에 집중돼 있다. 종이색(--paper)과 강조색(--vermilion) 두 톤으로 이뤄진 배색을
+   :root 커스텀 프로퍼티로 정의해두고 전체에서 재사용한다. 이 파일은 규칙 수가 매우 많지만 그
+   대부분이 브레이크포인트별 폰트 크기/그리드 칼럼 수 조정이 반복되는 전형적인 반응형
+   타이포그래피라, 아래에서는 이 파일에서만 볼 수 있는 특이한 기법에만 주석을 달았다. */
 .root {
   --paper: #f2ebdd;
   --paper-deep: #e6ddcc;
@@ -274,6 +281,10 @@
   letter-spacing: -0.025em;
 }
 
+/* [INTV:ARCH] 잡지 레이아웃에서 흔한 "12칸 그리드" 기법: 컨테이너를 12개의 동일한 칼럼으로
+   나눠두고(repeat(12, ...)), 자손 요소들은 아래 .heroIssue/.heroTitleBlock처럼 grid-column:
+   시작칼럼 / 끝칼럼으로 자기 위치와 너비를 지정한다. 12는 2/3/4/6등분이 모두 딱 맞아떨어지는
+   숫자라 비대칭 레이아웃을 짤 때 흔히 쓰인다. */
 .homeHero {
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
@@ -856,6 +867,10 @@
   border-bottom: 1px solid var(--ink);
 }
 
+/* [INTV:ARCH] position: sticky — 부모(.archiveGroup) 안에서 스크롤하는 동안 이 헤더는 top:30px
+   위치에 붙어 고정되고, 부모 영역을 벗어나면 같이 스크롤되어 사라진다. 긴 목록(옆의 프로젝트
+   카드들)을 내리는 동안 그 그룹의 제목이 계속 보이게 하려는 잡지형 레이아웃의 흔한 기법 — 아래
+   interviewTracks 섹션에도 동일하게 쓰인다. */
 .archiveGroup > header {
   position: sticky;
   top: 30px;
@@ -886,6 +901,11 @@
   line-height: 1.7;
 }
 
+/* [INTV:EDGE] counter-reset은 CSS 카운터(counter-increment/counter()로 자동 번호를 매기는
+   기능)를 시작하는 선언인데, 이 파일 안 어디에서도 counter-increment/counter()를 실제로 쓰는
+   곳이 없다 — 지금 보이는 I/II/III 같은 절 번호는 JSX 쪽에서 문자열로 직접 박아 넣은 값
+   (SectionKicker 등)이다. 즉 이 선언은 지금은 아무 효과가 없는 흔적(원본 로직이라 그대로 둔다) —
+   재구현 시 이 CSS만 보고 "카운터로 번호가 매겨지는구나"라고 오해하지 않도록 주의. */
 .caseStudy {
   counter-reset: case-section;
 }
@@ -1041,6 +1061,9 @@
   line-height: 1.4;
 }
 
+/* [INTV:ARCH] ::first-letter: 요소의 "첫 글자"만 골라 스타일을 줄 수 있는 CSS 가상 요소 —
+   인쇄 잡지에서 문단 시작을 크게 강조하는 전통적 타이포그래피 기법인 "드롭캡"을 웹에서 구현할
+   때 쓰는 표준적인 방법. */
 .dropcap::first-letter {
   float: left;
   margin: 0.05em 0.11em 0 0;
@@ -2928,6 +2951,8 @@
   }
 }
 
+/* [INTV:EDGE] globals.css와 같은 이유의 접근성 처리(모션 최소화 설정 사용자에게 애니메이션/
+   트랜지션을 끔). */
 @media (prefers-reduced-motion: reduce) {
   .root *,
   .root *::before,

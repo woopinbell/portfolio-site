@@ -15,6 +15,8 @@ import {
 import { createDesignShellProps } from "@/designs/shell-props";
 import type { DesignRouteProps } from "@/designs/types";
 
+// [INTV:TRAP] route 타입 좁히기 패턴은 home-route.tsx에서 설명한 것과 동일 — PortfolioRouteViewModel
+// 판별 유니언을 route 값으로 좁혀야 이 라우트 전용 필드에 안전하게 접근할 수 있다.
 export default function ProjectDetailRoute({
   content,
   contentDebug,
@@ -199,6 +201,11 @@ function ProjectBody({
   );
 }
 
+// [INTV:ARCH] 이 파일 아래쪽 SectionTitle/TwoColumnSection/ListSection 세 개는 프로젝트 상세
+// 페이지의 각 절(문제/해결/아키텍처/의사결정/성과 등)이 전부 "왼쪽에 제목, 오른쪽에 본문 또는
+// 목록"이라는 같은 2단 레이아웃을 반복해서 쓰길래 공통 뼈대로 뽑아둔 것 — ProjectBody 쪽에서 어떤
+// 콘텐츠 필드를 꽂을지만 절마다 다르게 넘긴다(레이아웃과 데이터를 분리해, 절이 하나 추가돼도 이
+// 공통 컴포넌트를 재사용하면 된다).
 function SectionTitle({ eyebrow, title }: { eyebrow: string; title: string }) {
   return (
     <div>

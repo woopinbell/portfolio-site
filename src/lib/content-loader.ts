@@ -1,3 +1,7 @@
+// [INTV:ARCH] JSON 파일을 일반 모듈처럼 import할 수 있는 건 TS/번들러의 "JSON 모듈" 지원 덕분 —
+// 빌드 시점에 그 파일의 내용이 JS 객체 리터럴로 바뀌어 번들에 포함된다(런타임에 fetch로 읽어오는
+// 게 아님) — 콘텐츠가 바뀌면 재빌드가 필요하다는 뜻이고, 그 대가로 런타임 네트워크 왕복이나
+// 파일시스템 접근 없이 즉시 사용 가능하다.
 import contactJson from "@/content/contact.json";
 import curationJson from "@/content/curation.json";
 import experienceJson from "@/content/experience.json";
@@ -12,6 +16,11 @@ import resumeJson from "@/content/resume.json";
 import siteJson from "@/content/site.json";
 import skillsJson from "@/content/skills.json";
 import techStackJson from "@/content/tech-stack.json";
+// [INTV:EDGE] zod: 런타임 스키마 검증 라이브러리. lib/portfolio/content.ts가 JSON을 `as Type`으로
+// "믿고" 받아들이는 것과 달리, 이 파일은 실제로 각 JSON의 모양이 스키마(content-schema.ts에 정의됨)와
+// 맞는지 실행 중에 검사한다 — 콘텐츠 파일을 사람이 손으로 고치다 실수해도(타입이 틀리거나 필수
+// 필드를 빠뜨려도) 여기서 바로 걸러진다. `as Type` 단언만으로는 실제 JSON이 그 타입과 다르게
+// 생겨도 컴파일은 통과하고 런타임에야(혹은 아예 발견 못 하고) 문제가 드러난다.
 import { z } from "zod";
 
 import {
@@ -63,6 +72,10 @@ const internalNavigationPages = new Map<string, NavigablePageId>([
   ["/interview-map", "interviewMap"],
 ] as const);
 
+// [INTV:ARCH] 아래 loadPortfolioSource가 기본적으로는 실제 JSON 파일들을 읽지만, 이 타입으로 특정
+// 필드만 다른 값으로 바꿔치기(override)할 수 있게 열어뒀다 — 테스트 코드에서 가짜 콘텐츠를 주입할
+// 때 쓰기 위한 구조(portfolio.test.ts 등이 실제 content/*.json 없이도 검증 로직만 독립적으로
+// 테스트할 수 있게 한다 — 의존성 주입).
 export type PortfolioSourceOverrides = Partial<
   Record<
     | "site"
@@ -97,6 +110,9 @@ export class PortfolioContentError extends Error {
   }
 }
 
+// [INTV:ARCH] content-readiness.ts의 appendPath와 같은 목적(JSONPath 스타일 경로 문자열 조립)의
+// 별도 구현 — 여기서는 zod가 주는 오류 경로(PropertyKey[], 즉 string|number|symbol의 배열)를 한
+// 번에 reduce로 접는다(두 파일이 서로 다른 시점/입력 형태에서 같은 개념을 각자 필요한 형태로 구현).
 function jsonPath(path: PropertyKey[]) {
   if (path.length === 0) {
     return "$";
@@ -114,6 +130,15 @@ function jsonPath(path: PropertyKey[]) {
   }, "$" );
 }
 
+// [INTV:ARCH] 제네릭 <Schema extends z.ZodType>: 어떤 구체적인 zod 스키마가 들어오든, 그 스키마가
+// "검증을 통과했을 때 만들어내는 타입"(z.output<Schema>)을 함수의 반환 타입으로 그대로 흘려보낸다 —
+// 그래서 아래 loadPortfolioSource에서 이 함수를 siteContentSchema로 호출하면 결과가 site 콘텐츠
+// 타입으로, projectsContentSchema로 호출하면 projects 콘텐츠 타입으로 자동으로 달라진다(호출부마다
+// 반환 타입을 따로 써줄 필요가 없다).
+// [INTV:EDGE] schema.safeParse(input): 검증 실패 시 예외를 던지는 parse()와 달리, safeParse는
+// 성공/실패 여부와 함께 에러 목록을 값으로 돌려준다 — 그 값을 이 프로젝트 자체의 에러 형식
+// (ContentValidationIssue)으로 변환해서 던진다(zod의 원본 에러 형태를 그대로 밖으로 노출하지
+// 않고, 이 프로젝트가 정의한 일관된 이슈 형식으로 감싸는 계층).
 function parseContentFile<Schema extends z.ZodType>(
   file: string,
   schema: Schema,
@@ -182,6 +207,11 @@ function addMissingReferenceIssue(
   }
 }
 
+// [INTV:EDGE] 콘텐츠 안의 내부 링크(href가 "/"로 시작)가 실제로 존재하고 활성화된 라우트를
+// 가리키는지 검증한다 — 예를 들어 links.json에 "/project"(오타, 실제로는 "/projects")라고 적혀
+// 있으면 여기서 잡아낸다. 존재하지 않는 페이지로의 링크, 비활성화된 페이지로의 링크, 존재하지
+// 않거나 비활성화된 프로젝트로의 링크까지 이 함수 하나가 전부 검사한다 — 깨진 내부 링크를 런타임
+// 404로 사용자가 마주치기 전에 빌드 시점에 잡아내는 방어.
 function addInternalRouteIssue({
   enabledProjectIds,
   file,
@@ -203,6 +233,12 @@ function addInternalRouteIssue({
     return;
   }
 
+  // [INTV:TRAP] href는 "/projects/foo?x=1" 같은 상대 경로 문자열이라 그 자체로는 URL 생성자에 못
+  // 넣는다(new URL("/foo")는 base 없이 예외를 던진다) — 실제로는 절대 쓰이지 않을 더미 origin
+  // (.invalid는 content-readiness.ts의 isReservedHostname과 같은 이유로 예약된 도메인)을 base로
+  // 넘겨서 URL 파서의 힘을 빌려 쿼리스트링/해시를 다 떼어내고 깨끗한 pathname만 뽑아내는 흔한
+  // 트릭이다 — 직접 문자열을 잘라 pathname을 구하려 하면 쿼리스트링/해시 경계 처리에서 놓치기 쉬운
+  // 엣지 케이스가 많다.
   const pathname = new URL(href, "https://portfolio.invalid").pathname;
   if (pathname === "/") {
     return;
@@ -328,6 +364,15 @@ export function loadPortfolioSource(overrides: PortfolioSourceOverrides = {}) {
     input.curation,
   );
 
+  // [INTV:ARCH] 여기서부터 끝까지는 "참조 무결성" 검사 구간이다 — 관계형 DB의 외래키 제약과 비슷한
+  // 개념을, 여러 개의 독립된 JSON 파일들 사이에서 빌드 시점에 수동으로 검증한다. 예: projects.json의
+  // 각 프로젝트가 가리키는 groupId가 실제로 존재하는 그룹인지, journey.json의 projectId가 실제
+  // 존재하는(그리고 활성화된) 프로젝트인지 등. 콘텐츠가 여러 개의 독립된 JSON 파일로 쪼개져 있어서
+  // DB의 FK 제약 같은 자동 무결성 보장이 없다 — 이 검증 블록이 그 역할을 애플리케이션 레벨에서
+  // 대신한다.
+  // - [FLOW] 1. 먼저 "유효한 id들의 집합"(groupIds, enabledProjectIds, stackIds 등)을 전부 모아둠
+  //   -> 2. 각 파일을 순회하며 그 집합에 없는 참조(addMissingReferenceIssue)나 중복 id
+  //   (addDuplicateIssues)를 찾아냄 -> 3. issues 배열에 전부 모은 뒤 마지막에 한꺼번에 판정
   const issues: ContentValidationIssue[] = [];
   const groupIds = new Set(projects.groups.map((group) => group.id));
   const enabledProjectIds = new Set(
@@ -667,6 +712,14 @@ export function loadPortfolioSource(overrides: PortfolioSourceOverrides = {}) {
   };
 }
 
+// [INTV:ARCH] 모듈 최상위(함수 밖)에서 바로 호출 — 이 모듈이 처음 import되는 순간 모든 JSON 검증이
+// 즉시 실행된다. 콘텐츠에 문제가 있으면 앱이 "나중에 그 페이지에 접속했을 때"가 아니라 "시작/빌드하는
+// 즉시" 실패하게 만들어, 잘못된 콘텐츠가 운영 환경까지 조용히 넘어가는 걸 막는 설계 — "실패를
+// 최대한 이르게, 명확하게 드러낸다"는 원칙을 빌드 파이프라인 레벨에 적용한 것.
 export const portfolioSource = loadPortfolioSource();
 
+// [INTV:ARCH] ReturnType<typeof 함수>: 함수의 반환 타입을 별도로 다시 적지 않고 함수 자체에서
+// 그대로 추출하는 유틸리티 타입 — loadPortfolioSource의 반환 객체 모양이 바뀌면 이 타입도 자동으로
+// 따라간다(별도 인터페이스로 타입을 다시 선언했다면, 함수 구현이 바뀔 때마다 그 인터페이스도 손으로
+// 맞춰야 하는 이중 관리 부담이 생긴다).
 export type PortfolioSource = ReturnType<typeof loadPortfolioSource>;
