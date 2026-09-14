@@ -8,8 +8,12 @@ import {
 import { ContentHint } from "./content-hint";
 import { Reveal } from "./reveal";
 
+// [INTV:ARCH] 이 컴포넌트는 같은 이력(journey) 데이터를 두 가지 레이아웃으로 그릴 수 있다:
+// "compact"(세로 한 줄 타임라인)와 "paired-centerline"(가운데 축을 두고 좌우로 카드가 번갈아
+// 붙는 타임라인). 어느 쪽을 쓸지는 아래 JourneyList의 variant prop이 결정한다.
 type JourneyListVariant = "compact" | "paired-centerline";
 
+// "2024-03-15" 같은 ISO 날짜 문자열에서 앞 7글자("2024-03")만 잘라 "2024.03" 형태로 바꾼다.
 function formatYearMonth(date: string) {
   return date.slice(0, 7).replace("-", ".");
 }
@@ -25,6 +29,8 @@ function getJourneyPeriod(item: JourneyItem) {
   return `${start} - ${end}`;
 }
 
+// [INTV:ARCH] 두 레이아웃 모두에서 공유하는 "항목 하나의 내용"(기간/카테고리/제목/본문/케이스
+// 스터디 링크) — 바깥 레이아웃 컴포넌트가 이 내용을 <li>든 카드든 원하는 컨테이너로 감싼다.
 function JourneyEntry({
   caseStudyLabel,
   contentDebug,
@@ -92,6 +98,9 @@ function JourneyCard({
   );
 }
 
+// [INTV:ARCH] 배열을 2개씩 묶어 [[a,b], [c,d], [e]] 형태로 만든다 — "paired-centerline" 레이아웃이
+// 한 행에 카드를 좌우로 하나씩 배치하기 위해, 미리 2개 단위로 쪼개둔 것(마지막 행은 홀수 개면
+// 1개만 남을 수 있음).
 function chunkPairs(items: JourneyItem[]) {
   const pairs: JourneyItem[][] = [];
 
@@ -115,6 +124,9 @@ function PairedJourneyList({
   homeTemplate?: HomeTemplateId;
   items: JourneyItem[];
 }) {
+  // [INTV:ARCH] 배열 구조분해 + 나머지(rest) 패턴: 맨 앞 항목만 따로 뽑아 "시작점"으로 중앙에
+  // 단독 배치하고, 그 뒤 나머지 항목들만 2개씩 좌우로 짝지어 배치한다(타임라인 시작을 시각적으로
+  // 강조하려는 의도).
   const [startItem, ...projectItems] = items;
   const rows = chunkPairs(projectItems);
 
@@ -122,6 +134,9 @@ function PairedJourneyList({
     <div className="paired-timeline">
       <ol className="paired-timeline-list">
         {startItem ? (
+          // [INTV:ARCH] animated 값에 따라 같은 내용을 Reveal로 감쌀지(순차 등장 애니메이션)
+          // 그냥 <li>로 둘지 분기한다 — 페이지에 따라 애니메이션 유무를 다르게 쓸 수 있게 열어둔
+          // 설계.
           animated ? (
             <Reveal
               as="li"

@@ -23,6 +23,9 @@ import {
 import type { DesignRouteProps } from "@/designs/types";
 import { createDesignShellProps } from "@/designs/shell-props";
 
+// [INTV:ARCH] 전체 구조(route 타입 좁히기, 콘텐츠 기반 섹션 순서 등)는 designs/classic/home-route.tsx와
+// 동일하니 그쪽 주석 참고. 이 파일에서 다른 점은 히어로 섹션(HeroSection)이 가짜 터미널 대신 대표
+// 프로젝트 스크린샷/카드를 보여주는 "쇼케이스" 레이아웃이라는 것뿐이다.
 export default function HomeRoute({
   content,
   contentDebug,
@@ -163,6 +166,8 @@ function HeroSection({
   const stats = getWorkMapStats(content);
   const copy = content.presentation.home.design.hero;
   const links = content.heroLinks;
+  // [INTV:ARCH] 대표 프로젝트 1개는 크게, 그다음 2개는 작은 카드로 — 배열을 잘라 역할이 다른 두
+  // 그룹으로 나눈다.
   const leadProject = projects[0];
   const supportingProjects = projects.slice(1, 3);
 

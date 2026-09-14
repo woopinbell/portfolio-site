@@ -5,6 +5,7 @@ import { PageShell } from "@/components/portfolio/site-shell";
 import type { DesignRouteProps } from "@/designs/types";
 import { createDesignShellProps } from "@/designs/shell-props";
 
+// [INTV:ARCH] designs/classic/contact-route.tsx와 구조가 동일 (activeTemplate만 "design").
 export default function ContactRoute({
   content,
   contentDebug,

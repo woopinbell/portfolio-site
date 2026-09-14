@@ -1,3 +1,11 @@
+/* [INTV:ARCH] CSS Modules: 이 파일명이 *.module.css면 빌드 도구가 클래스명을 해시가 섞인 고유
+   이름으로 바꿔주고, design-switcher.tsx에서는 `import styles from "./design-switcher.module.css"`
+   로 불러와 styles.root처럼 접근한다. 전역 CSS(globals.css)와 달리 클래스명이 다른 컴포넌트와
+   절대 충돌하지 않는다는 게 핵심 — 그래서 .root, .panel처럼 흔한 이름을 마음대로 써도 안전하다.
+
+   이 파일 전체는 <details>/<summary> 네이티브 HTML 위젯(디자인 테마를 고르는 드롭다운)을 꾸미는
+   스타일이다. JS로 열림/닫힘 상태를 관리하지 않고 브라우저 기본 동작(summary 클릭 시 자동 토글,
+   포커스/접근성 트리 처리 포함)에 맡긴 설계 — design-switcher.tsx 쪽 주석 참고. */
 .root {
   position: relative;
   z-index: 50;
@@ -14,6 +22,8 @@
   user-select: none;
 }
 
+/* [INTV:EDGE] <summary>는 기본적으로 브라우저가 화살표(▶) 마커를 그려주는데, 크롬/사파리
+   계열(webkit)에서는 이 전용 가상 요소를 숨겨야 커스텀 디자인이 깨끗하게 보인다. */
 .root summary::-webkit-details-marker {
   display: none;
 }
@@ -111,11 +121,16 @@
   font-size: 0.65rem;
 }
 
+/* [INTV:ARCH] 좁은 화면에서는 우측 상단에 뜨는 작은 드롭다운 대신 화면 하단에서 올라오는
+   "바텀 시트"로 완전히 다른 레이아웃을 쓴다. */
 @media (max-width: 640px) {
   .root {
     position: static;
   }
 
+  /* [INTV:ARCH] 패널이 열려 있을 때(<details open>) 배경 전체를 반투명하게 덮는 오버레이 —
+     바텀 시트 밖을 탭하면 닫히는 느낌을 주는 흔한 모바일 UI 패턴. content:""는 실제 내용 없이
+     이 가상 요소를 화면에 그리기 위한 필수 선언. */
   .root[open]::before {
     background: rgba(10, 11, 14, 0.58);
     content: "";
@@ -133,6 +148,9 @@
     min-width: 0;
     overflow: auto;
     overscroll-behavior: contain;
+    /* [INTV:EDGE] env(safe-area-inset-*): 노치/홈 인디케이터가 있는 기기(iPhone 등)에서 시스템
+       UI에 콘텐츠가 가리지 않도록 브라우저가 제공하는 안전 영역 여백 — max()로 기본 여백과
+       비교해 더 큰 쪽을 적용한다. */
     padding: 0.85rem max(0.75rem, env(safe-area-inset-right))
       max(0.85rem, env(safe-area-inset-bottom))
       max(0.75rem, env(safe-area-inset-left));

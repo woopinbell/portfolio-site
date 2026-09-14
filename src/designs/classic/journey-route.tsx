@@ -15,6 +15,8 @@ import {
 import type { DesignRouteProps } from "@/designs/types";
 import { createDesignShellProps } from "@/designs/shell-props";
 
+// [INTV:TRAP] route 타입 좁히기 패턴은 home-route.tsx에서 설명한 것과 동일 — PortfolioRouteViewModel
+// 판별 유니언을 route 값으로 좁혀야 이 라우트 전용 필드에 안전하게 접근할 수 있다.
 export default function JourneyRoute({
   content,
   contentDebug,

@@ -1,5 +1,12 @@
 import type { PortfolioSource } from "./content-loader";
 
+// [INTV:ARCH] 이 저장소는 "재사용 가능한 포트폴리오 템플릿"이다 — 누군가 이 코드를 받아 자기
+// 정보로 채워 배포하는 걸 전제로 한다. 그래서 콘텐츠 모드가 두 가지: "template"(플레이스홀더 값이
+// 남아 있어도 로컬 개발/미리보기는 정상 동작) / "production"(실제 배포 직전엔 "Your Name" 같은
+// 견본 문구가 하나라도 남아있으면 빌드를 막는다). Dockerfile의 PORTFOLIO_CONTENT_MODE 빌드 인자가
+// 바로 이 값을 결정한다 — 개발 중엔 콘텐츠를 다 채우지 않고도 화면을 확인할 수 있어야 하지만,
+// 실제 배포에는 그 유연함이 오히려 "본인 정보를 안 채우고 그대로 배포하는" 사고로 이어질 수 있어
+// 두 모드를 분리했다.
 export type PortfolioContentMode = "template" | "production";
 
 export type PortfolioReadinessEnvironment = {
@@ -13,6 +20,13 @@ export type PortfolioReadinessIssue = {
   message: string;
 };
 
+// [INTV:ARCH] mode가 "production"일 때만 siteUrl이 항상 채워진다는 걸 타입으로도 표현한 판별
+// 유니언 — mode: "template"일 때 siteUrl을 optional(string | undefined)로 그냥 뒀다면, siteUrl을
+// 쓰는 쪽 코드가 매번 null 체크를 해야 했을 것이다. 판별 유니언로 "production이면 siteUrl은
+// 반드시 URL"이라는 관계를 타입으로 강제해, mode를 체크한 뒤에는 siteUrl 존재가 자동으로 보장된다.
+// 아래에서 Extract<PortfolioReadinessResult, { mode: "production" }>로 "production인 경우"만 뽑아
+// 쓴다(Extract는 유니언 중 주어진 형태와 겹치는 멤버만 골라내는 유틸리티 타입, view-models.ts의
+// RouteViewModel 등과 같은 계열의 기법).
 export type PortfolioReadinessResult =
   | { mode: "template"; siteUrl: undefined }
   | { mode: "production"; siteUrl: URL };
@@ -22,6 +36,12 @@ type ProductionReadinessResult = Extract<
   { mode: "production" }
 >;
 
+// [INTV:TRAP] `as const`(각 배열 원소를 넓은 string이 아닌 정확한 리터럴로 고정) + `satisfies`
+// (그 결과가 오른쪽 타입 요건에 맞는지 검사만 하고 추론된 리터럴 타입은 유지)를 같이 써서, 이
+// 목록이 "PortfolioSource의 실제 키 이름"과 "src/content/*.json 형태의 경로 문자열" 쌍으로만
+// 이뤄져 있는지 컴파일 시점에 보장한다 — 키 이름에 오타가 있으면 여기서 바로 타입 에러가 난다.
+// `as` 단언으로 재구현하면 이 컴파일 타임 검사 자체가 사라져, 오타가 나도 조용히 통과했다가
+// 런타임에야(또는 영영 못 알아채고) 드러난다.
 const contentFiles = [
   ["site", "src/content/site.json"],
   ["profile", "src/content/profile.json"],
@@ -41,6 +61,9 @@ const contentFiles = [
   readonly [keyof PortfolioSource, `src/content/${string}.json`]
 >;
 
+// [INTV:EDGE] 템플릿을 내려받은 사람이 실수로 안 고치고 넘어가기 쉬운 "견본 문구"들을 정규식으로
+// 등록해둔다 — production 모드 검증 시 콘텐츠 전체를 재귀적으로 훑으며 이 패턴이 하나라도 남아있으면
+// 빌드를 실패시킨다(Dockerfile의 `npm run build:verify`가 이 검사를 트리거하는 스크립트).
 const placeholderMarkers = [
   { label: "Your Name", pattern: /\byour name\b/i },
   { label: "your-handle", pattern: /\byour-handle\b/i },
@@ -86,6 +109,10 @@ export function resolvePortfolioContentMode(
   );
 }
 
+// [INTV:ARCH] 에러 메시지에 쓸 "$.foo.bar[3]" 같은 JSONPath 스타일 경로 문자열을 한 단계씩
+// 이어붙이는 헬퍼. 키가 평범한 식별자 형태(정규식으로 검사)면 점 표기(.bar)를, 공백이나 특수문자가
+// 섞인 키라면 대괄호+따옴표 표기(["weird key"])를 쓴다 — 어느 쪽이든 JS에서 그 경로를 그대로
+// 복붙해 접근할 수 있는 형태(에러 메시지를 읽는 사람이 바로 콘솔에서 시도해볼 수 있게 하는 배려).
 function appendPath(path: string, key: string | number) {
   if (typeof key === "number") {
     return `${path}[${key}]`;
@@ -100,6 +127,11 @@ function findPlaceholderMarker(value: string) {
   return placeholderMarkers.find(({ pattern }) => pattern.test(value));
 }
 
+// [INTV:ARCH] 콘텐츠 JSON의 값 하나(문자열/배열/객체 무엇이든)를 받아 재귀적으로 내려가며 모든
+// 문자열 값을 검사하는 트리 순회 함수 — 콘텐츠 구조가 얼마나 깊이 중첩돼 있든(content-schema.ts를
+// 보면 알 수 있듯 중첩이 상당히 깊다) 이 함수 하나로 전체를 훑을 수 있다. 스키마별로 순회 로직을
+// 따로 짜는 대신, 타입 자체(string/array/object)로 분기하는 범용 순회를 택해 스키마가 바뀌어도
+// 이 함수를 고칠 필요가 없다.
 function collectPlaceholderIssues(
   value: unknown,
   file: string,
@@ -147,6 +179,10 @@ function addProductionAssetIssue(
   }
 }
 
+// [INTV:EDGE] example.com/.net/.org와 .example/.invalid/.test 접미사는 IANA(인터넷 주소를 관리하는
+// 기구)가 "문서/예제 전용으로 절대 실제 서비스에 쓰이지 않도록" 예약해둔 도메인이다(RFC 2606) —
+// 실제 배포용 URL로 쓰이면 안 되는 견본 도메인이 남아있는지 걸러내기 위한 검사(content-loader.ts가
+// URL 파서 트릭에 쓰는 .invalid 도메인도 이 RFC가 근거).
 function isReservedHostname(hostname: string) {
   return (
     ["example.com", "example.net", "example.org"].some(
@@ -171,6 +207,9 @@ function parsePublicSiteUrl(
     return undefined;
   }
 
+  // [INTV:EDGE] URL 생성자: 문자열이 유효한 URL 형식인지 파싱하면서 검사하는 표준 웹 API. 형식이
+  // 잘못되면 예외를 던지므로 try/catch로 감싸 "유효하지 않은 URL"이라는 결과로 변환한다(정규식으로
+  // URL 형식을 직접 검증하는 것보다 표준 파서에 위임하는 편이 엣지 케이스를 더 정확히 잡는다).
   let siteUrl: URL;
   try {
     siteUrl = new URL(value);
@@ -190,6 +229,9 @@ function parsePublicSiteUrl(
     hostname === "::1" ||
     hostname.endsWith(".localhost");
 
+  // [INTV:EDGE] username/password 체크: "https://user:pass@host" 형태로 URL에 인증정보가 박혀
+  // 있는 걸 막는다 — 실수로 자격증명이 공개 URL 설정(SITE_URL, 소셜 메타 태그 등으로 노출될 값)에
+  // 섞여 들어가는 걸 방지하기 위한 안전장치.
   if (
     !["http:", "https:"].includes(siteUrl.protocol) ||
     isLocal ||
@@ -374,6 +416,9 @@ export function validateProductionReadiness(
   return { mode: "production", siteUrl };
 }
 
+// [INTV:ARCH] 빌드 스크립트가 호출하는 최상위 진입점 — PORTFOLIO_CONTENT_MODE에 따라 "template"이면
+// 검증을 건너뛰고, "production"이면 위의 모든 플레이스홀더/자산/연락 수단 체크를 전부 통과해야만
+// 빌드가 계속된다(scripts/validate-content-readiness.ts가 이 함수를 호출하는 CLI 진입점).
 export function validateBuildReadiness(
   content: PortfolioSource,
   environment: PortfolioReadinessEnvironment,

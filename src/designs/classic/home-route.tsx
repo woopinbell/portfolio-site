@@ -23,6 +23,17 @@ import {
 import type { DesignRouteProps } from "@/designs/types";
 import { createDesignShellProps } from "@/designs/shell-props";
 
+// [INTV:TRAP] content(props)의 타입은 여러 페이지용 뷰 모델을 아우르는 넓은 유니언
+// (PortfolioRouteViewModel)이라, 실제로 "home"용 필드(featuredProjects 등)에 접근하려면 먼저
+// route가 "home"인지 런타임에 확인해야 한다. 이 if문을 통과하고 나면 TS가 그 확인 결과로 content의
+// 타입을 HomeViewModel로 좁혀줘서(narrowing) 그 아래 코드에서 안전하게 홈 전용 필드를 쓸 수 있다
+// — registry.tsx가 route와 viewModel을 항상 맞춰서 넘겨주므로 이 분기가 실제로 false가 되는 일은
+// 없지만, 컴파일러를 만족시키기 위한 방어적 타입 체크다. 이 체크를 생략하고 content를 바로
+// HomeViewModel로 단언(as)하면, 컴파일은 통과하지만 실수로 다른 라우트의 데이터가 흘러들어왔을 때
+// 런타임에 조용히 undefined 필드를 참조하게 된다.
+// 이 패턴(if (content.route !== "이 라우트") return null;)은 이 폴더의 다른 7개 라우트 파일과
+// design/editorial/brutalist/cinematic 등 다른 테마의 동일 라우트 파일에도 반복되므로 이후로는
+// 다시 설명하지 않는다.
 export default function HomeRoute({
   content,
   contentDebug,
@@ -30,6 +41,9 @@ export default function HomeRoute({
 }: DesignRouteProps) {
   if (content.route !== "home") return null;
 
+  // [INTV:ARCH] 이 컴포넌트는 "classic" 테마 폴더 안에만 존재하고 다른 테마에서는 쓰이지 않으므로,
+  // 테마 id를 prop으로 받지 않고 이렇게 상수로 고정해둔다 — 그대로 createDesignShellProps와 하위
+  // 컴포넌트들에 전달된다.
   const activeTemplate = "classic";
   return (
     <HomeView
@@ -80,6 +94,11 @@ function HomeView({
   );
 }
 
+// [INTV:ARCH] 홈 화면의 섹션 순서/구성 자체를 코드가 아니라 콘텐츠 데이터
+// (content.presentation.home.classic.sections, 문자열 id 배열)로 결정한다 — HomeView는 그 배열을
+// map으로 돌며 이 함수에 sectionId를 하나씩 넘기고, 이 함수는 그 id에 맞는 섹션 컴포넌트로 분기한다.
+// 즉 섹션을 추가/제거/순서 변경하고 싶을 때 이 파일을
+// 고치지 않고 콘텐츠 JSON만 수정하면 되는 구조 — 콘텐츠 기반(content-driven) 설계.
 function HomeSection({
   activeTemplate,
   content,

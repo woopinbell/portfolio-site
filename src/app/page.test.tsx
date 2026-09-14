@@ -1,3 +1,6 @@
+// [INTV:ARCH] @testing-library/react 사용법은 journey/page.test.tsx 상단 주석 참고.
+// within(요소)는 문서 전체가 아니라 특정 요소(예: 이 디자인 스위처 <nav> 안쪽)로 검색 범위를
+// 좁혀서 같은 텍스트/role이 여러 군데 있어도 원하는 영역 안에서만 찾게 해준다.
 import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 
@@ -59,6 +62,10 @@ describe("Home", () => {
     ).toHaveTextContent("Design 03/05");
   });
 
+  // [INTV:ARCH] it.each(배열)(...): 5개 디자인 테마 각각에 대해 "테마를 바꿔도 콘텐츠와
+  // 내비게이션 구조가 일관되게 렌더링되는지"를 같은 검증 로직으로 반복 실행 — 테마 하나를
+  // 추가/삭제해도 이 테스트 목록을 손으로 늘리거나 줄일 필요 없이 위쪽 designIds 배열만
+  // 바뀌면 된다.
   it.each(designIds)(
     "renders shared content through the %s full-site design",
     async (designId) => {
@@ -153,6 +160,10 @@ describe("Home", () => {
       '[data-site-design="brutalist"]',
     );
 
+    // [INTV:EDGE] 이 값들은 lib/portfolio/template-href.ts의 ?view=/&debug= 쿼리 조립 규칙이
+    // 실제 렌더링 결과에도 정확히 반영되는지 검증한다 — editorial은 기본 테마라 view= 없이
+    // debug=content만 붙고, cinematic처럼 기본이 아닌 테마로 이동하는 링크는 view=와 debug=가
+    // 둘 다 붙어야 한다(template-href.ts의 shouldIncludeView 로직을 실제 DOM으로 검증).
     expect(editorialLink).toHaveAttribute("href", "/?debug=content");
     expect(cinematicLink).toHaveAttribute(
       "href",

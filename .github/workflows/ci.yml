@@ -1,3 +1,11 @@
+# [INTV:ARCH] 검증 성격이 다른 여러 job으로 나눠 병렬로 돌리는 대신, 이 워크플로는 job 하나
+# 안에 15개 스텝을 전부 직렬로 쌓았다 — 뒤로 갈수록
+# 앞 스텝의 산출물에 의존하는 체인이라(빌드 결과물 위에서 E2E를 돌리고, 그 E2E가 설치한
+# Playwright Chromium 경로를 Lighthouse가 재사용하는 식), job을 나눠 병렬화해도 각 job이 다시
+# 앞 단계를 처음부터 반복해야 해서 이득이 크지 않다. 대신 순서를 "저렴하고 빠른 검사(lint,
+# typecheck) -> 콘텐츠 검증 -> 빌드/E2E -> 번들/성능 예산 -> 컨테이너 검증"으로 배치해, 초반에
+# 이미 실패할 게 뻔한 커밋이 뒤쪽의 비싼 빌드/브라우저 단계까지 가지 않고 빨리 끝나게 한다.
+# GitHub Actions 문법 자체에 대한 개념 설명은 miniRT의 .github/workflows/ci.yml에 모아뒀다.
 name: CI
 
 on:
@@ -26,14 +34,26 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
 
+      # [INTV:TRAP] setup-node가 설치해주는 npm은 Node 배포판에 딸려오는 버전일 뿐, package.json
+      # 의 packageManager 필드나 로컬 개발 환경이 쓰는 정확한 npm 버전과 같다는 보장이 없다 —
+      # lockfile 포맷(lockfileVersion)이 npm 메이저 버전마다 달라질 수 있어서, 버전이 다르면
+      # `npm ci`가 lockfile을 조용히 다시 쓰려 하거나 설치 결과가 로컬과 미묘하게 달라질 수
+      # 있다. 이 스텝이 그 불확실성을 없앤다.
       - name: Pin npm
         run: npm install --global npm@11.16.0
 
+      # [INTV:EDGE] 실질적인 동작은 없는(빌드에 영향 안 줌) 진단성 스텝 — 이후 스텝이 예상 못한
+      # 이유로 실패했을 때, "애초에 이 실행이 어떤 Node/npm 버전으로 돌았는지"를 로그에서 바로
+      # 확인할 수 있게 남겨둔다(설정한 버전과 실제 적용된 버전이 어긋나는 경우를 빠르게
+      # 배제하기 위함).
       - name: Verify toolchain
         run: |
           node --version
           npm --version
 
+      # [INTV:TRAP] npm ci(install이 아니라)를 쓰는 이유 — package-lock.json에 없는 의존성
+      # 변경을 조용히 반영하지 않고, lockfile과 package.json이 어긋나면 바로 에러로 실패시켜
+      # "커밋된 lockfile 그대로" 재현 가능한 설치를 보장한다.
       - name: Install dependencies
         run: npm ci
 
@@ -57,6 +77,12 @@ jobs:
       - name: Check route bundle budgets
         run: npm run bundle:check
 
+      # [INTV:TRAP] Lighthouse가 브라우저를 새로 내려받게 두지 않고, 바로 위 스텝에서 이미 설치된
+      # Playwright의 Chromium 실행 파일 경로를 찾아 CHROME_PATH 환경변수로 넘긴다 — 그렇지
+      # 않으면 Lighthouse가 자기 몫의 Chromium을 별도로 다운로드해 CI 시간과 대역폭을 중복
+      # 소모한다. `>> "$GITHUB_ENV"`는 이 스텝에서 정한 값을 "이후의 모든 스텝"에서 환경변수로
+      # 쓸 수 있게 등록하는 GitHub Actions 전용 문법(같은 스텝 안에서 `export`한 값은 다음
+      # 스텝으로 안 넘어가므로, 스텝 간에 값을 전달하려면 반드시 이 방식을 써야 한다).
       - name: Locate Playwright Chromium for Lighthouse
         run: echo "CHROME_PATH=$(node -e 'process.stdout.write(require(\"playwright\").chromium.executablePath())')" >> "$GITHUB_ENV"
 

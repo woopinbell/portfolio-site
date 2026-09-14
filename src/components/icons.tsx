@@ -1,5 +1,13 @@
 import type { SVGProps } from "react";
 
+// [INTV:ARCH] SVGProps<SVGSVGElement>: React가 제공하는 유틸리티 타입으로, <svg> 태그가 받을 수
+// 있는 모든 표준 속성(className, onClick 등)의 타입을 그대로 재사용한다. 각 아이콘 컴포넌트는
+// { ...props }로 그 속성들을 최종 <svg>에 그대로 넘겨주기 때문에, 호출하는 쪽에서 className이나
+// 크기를 자유롭게 덮어쓸 수 있다.
+// [INTV:EDGE] aria-hidden="true"는 이 아이콘들이 장식용(스크린리더가 읽을 필요 없음)이라는 표시 —
+// 의미 전달은 보통 옆의 텍스트가 담당한다.
+// d 속성은 SVG 자체의 벡터 경로 좌표 문자열이라 내용은 개별 주석을 달지 않는다.
+// 이 파일의 모든 함수가 같은 패턴(속성 스프레드 + path)이라 이후 컴포넌트에는 반복 설명을 달지 않는다.
 type IconProps = SVGProps<SVGSVGElement>;
 
 export function ArrowRightIcon(props: IconProps) {

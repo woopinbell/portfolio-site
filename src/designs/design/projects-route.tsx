@@ -9,6 +9,9 @@ import {
 import type { DesignRouteProps } from "@/designs/types";
 import { createDesignShellProps } from "@/designs/shell-props";
 
+// [INTV:ARCH] 전체 구조는 designs/classic/projects-route.tsx와 같은 패턴(그룹핑 Map, 튜플 배열
+// 등)이라 그쪽 주석 참고. 여기서는 classic에 있던 가짜 터미널 통계 패널이 없고, 대신
+// featuredProjects를 큰 카드 2열로 먼저 보여준다.
 export default function ProjectsRoute({
   content,
   contentDebug,

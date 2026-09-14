@@ -21,6 +21,11 @@ if (!firstProject) {
   throw new Error("Route characterization requires at least one enabled project.");
 }
 
+// [INTV:ARCH] 각 라우트를 { currentPath, heading, renderPage } 객체로 표로 정리 — renderPage는
+// 즉시 호출된 결과가 아니라 "호출하면 실행되는 함수"(썽크)로 넘겨서, 실제 페이지 렌더링은 아래
+// it.each 콜백 안에서 필요한 시점에만 일어나게 미뤄둔다(배열을 만드는 시점에 8개 페이지를 전부
+// 미리 렌더링해버리면, 그중 하나가 실패해도 원인 추적이 어려워지고 불필요한 렌더링 비용도
+// 발생한다).
 const routes = [
   {
     currentPath: "/",
@@ -89,6 +94,12 @@ const routes = [
   },
 ];
 
+// [INTV:ARCH] "$currentPath"처럼 문자열 안에 $필드명을 쓰면, it.each가 routes 배열의 각
+// 객체에서 그 필드값을 읽어 테스트 제목에 그대로 끼워 넣어준다(배열 형태 it.each의 %s
+// 자리표시자와 같은 역할을 객체 형태에서 하는 방식). 8개 라우트 페이지 전부가 "1개의 h1,
+// data-home-template 속성이 붙은 main, 콘텐츠 디버그 라벨, 디자인 스위처의 현재 항목 표시" 같은
+// 공통 셸 규약을 지키는지 한 번에 검증하는 회귀 테스트 — 테마/페이지가 늘어나도 "모든 페이지가
+// 지켜야 할 최소 계약"을 한곳에서 강제한다.
 describe("portfolio routes", () => {
   it.each(routes)(
     "preserves the classic shell contract for $currentPath",
@@ -131,6 +142,9 @@ describe("portfolio routes", () => {
     },
   );
 
+  // [INTV:EDGE] ?view=classic&view=editorial처럼 같은 쿼리 키가 두 번 들어오면 Next는 이를
+  // 문자열 배열로 넘겨준다 — lib/portfolio/selectors.ts의 resolveHomeTemplateId/resolveContentDebug가
+  // 그 경우 배열의 첫 값만 쓰기로 한 정책을, 실제 렌더링 결과로 검증하는 테스트.
   it("uses the first value from repeated view and debug queries", async () => {
     const { container } = render(
       await AboutPage({

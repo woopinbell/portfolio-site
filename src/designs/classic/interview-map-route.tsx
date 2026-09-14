@@ -14,6 +14,8 @@ import {
 import type { DesignRouteProps } from "@/designs/types";
 import { createDesignShellProps } from "@/designs/shell-props";
 
+// [INTV:TRAP] route 타입 좁히기 패턴은 home-route.tsx에서 설명한 것과 동일 — PortfolioRouteViewModel
+// 판별 유니언을 route 값으로 좁혀야 이 라우트 전용 필드에 안전하게 접근할 수 있다.
 export default function InterviewMapRoute({
   content,
   contentDebug,
@@ -152,6 +154,10 @@ function TrackSection({
             {track.body}
           </p>
         </div>
+        {/* [INTV:EDGE] 인터뷰 질문/답변을 나열하는 실제 표 형태 데이터라 시각적 그리드가 아니라
+            시맨틱 <table>을 사용 — scope="col"은 스크린리더가 각 셀이 어느 열 머리글에 속하는지
+            알 수 있게 해주는 접근성 속성(div 그리드로 시각적으로만 표처럼 보이게 했다면 스크린
+            리더에는 그냥 텍스트 나열로 읽혀 표 구조 정보가 전달되지 않는다). */}
         <div className="overflow-hidden rounded-lg border border-line bg-surface">
           <table className="w-full border-collapse text-left text-sm">
             <thead>

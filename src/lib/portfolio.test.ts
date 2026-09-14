@@ -9,6 +9,24 @@ import siteJson from "@/content/site.json";
 import { SITE_DESIGN_IDS } from "@/designs/config";
 import { describe, expect, it } from "vitest";
 
+// [INTV:ARCH] 이 파일이 테스트 스위트 전체의 첫 번째로 처리되는 파일이라, vitest 자체의 문법을
+// 여기서 한 번에 정리해둔다 — 이후 다른 *.test.ts 파일들에서는 같은 설명을 반복하지 않는다.
+// - describe(이름, fn): 관련된 테스트들을 하나의 그룹(스위트)으로 묶는다. 그룹 이름은 보고서에서
+//   헤더로 표시됨.
+// - it(설명, fn) (test()의 별칭): 테스트 케이스 하나. 설명은 "무엇을 보장하는지"를 문장처럼
+//   서술한다.
+// - expect(값).toXxx(...): "값이 이러해야 한다"는 단언(assertion). 실패하면 그 시점에 테스트가
+//   실패 처리된다.
+//   - toBe: 참조/원시값이 정확히 같은지(===) 비교. toEqual: 객체/배열의 내용이 깊게(deep) 같은지
+//     비교(참조는 달라도 내용이 같으면 통과) — 아래 "clone boundaries" 테스트가 이 둘의 차이를
+//     실제로 검증한다.
+//   - expect.objectContaining({...})/arrayContaining([...])/stringContaining("..."): 정확히
+//     일치가 아니라 "이 필드들/항목/부분 문자열이 포함되어 있으면 통과"라는 부분 일치 매처 —
+//     결과 객체의 다른 필드까지 전부 나열하지 않아도 되게 해준다.
+//   - expect.any(Constructor): "이 생성자의 인스턴스이기만 하면 통과"라는 타입 기반 와일드카드
+//     매처.
+//   - toBeInstanceOf/toThrow/toMatch(정규식)/toHaveLength/toHaveProperty: 각각 인스턴스 여부,
+//     예외 발생 여부, 정규식 매칭, 배열/문자열 길이, 특정 속성 존재 여부를 검사.
 import * as portfolio from "./portfolio";
 import { validatePortfolioAssets } from "./content-assets";
 import { loadPortfolioSource, PortfolioContentError } from "./content-loader";
@@ -52,6 +70,10 @@ function projectMatchesFilter(
   );
 }
 
+// [INTV:ARCH] 여러 테스트가 "이 함수를 호출하면 PortfolioContentError를 던져야 한다"를
+// 검증해야 하는데, 매번 try/catch를 직접 쓰는 대신 이 헬퍼로 공통화했다 — 예외를 잡아 타입까지
+// 확인한 뒤 그대로 돌려줘서, 호출하는 쪽에서 error.issues 같은 세부 필드를 이어서 검사할 수
+// 있게 한다.
 function captureContentError(run: () => unknown) {
   let caught: unknown;
 
@@ -66,6 +88,10 @@ function captureContentError(run: () => unknown) {
 }
 
 describe("portfolio content", () => {
+  // [INTV:EDGE] "public module surface"(공개 API 표면) 테스트: lib/portfolio.ts(배럴 파일)가
+  // 실제로 내보내는 이름 목록을 하드코딩된 목록과 비교한다 — 누군가 실수로 export를
+  // 지우거나(다른 곳에서 쓰이는 함수가 조용히 사라짐) 의도치 않게 새 export를 추가하면 이
+  // 테스트가 바로 실패해서 "공개 API가 바뀌었다"는 걸 알아챌 수 있다.
   it("preserves the public module surface and clone boundaries", () => {
     expect(Object.keys(portfolio).sort()).toEqual(
       [
@@ -91,6 +117,13 @@ describe("portfolio content", () => {
       ].sort(),
     );
 
+    // [INTV:EDGE] "clone boundaries"(복제 경계) 검증: getPortfolioContent()를 두 번 호출한
+    // 결과에서, 매 호출마다 새로 filter/map되는 배열들(projects, projects[0].links, links —
+    // content.ts의 getPortfolioContent 안에서 .filter().map()으로 다시 만들어지는 부분)은 서로
+    // 다른 참조(not.toBe)여야 하고, 모듈 로드 시 한 번만 만들어져 그대로 재사용되는 필드들(site,
+    // profile, presentation, journey)은 같은 참조(toBe)를 유지해야 한다는 걸 확인한다 — "어디까지가
+    // 매번 새로 계산되고 어디부터는 캐시되어 공유되는지"라는, 코드만 봐서는 알기 어려운 내부 구현
+    // 세부사항을 테스트로 명문화해둔 것.
     const first = getPortfolioContent();
     const second = getPortfolioContent();
 
@@ -212,6 +245,12 @@ describe("portfolio content", () => {
     expect(contentError.message).toContain("Portfolio content validation failed");
   });
 
+  // [INTV:TRAP] structuredClone: 객체를 깊은 복사(deep copy)하는 표준 내장 함수 — import된
+  // projectsJson 등은 여러 테스트가 공유하는 하나의 모듈 싱글턴이라, 여기서 직접 값을 바꾸면 그
+  // 변경이 다른 테스트에도 새어나가 버린다(테스트 실행 순서에 따라 결과가 달라지는 flaky 테스트의
+  // 흔한 원인). 그래서 항상 복제본을 만들어 마음껏 망가뜨린 뒤(중복 id를 추가하는 등)
+  // loadPortfolioSource에 overrides로 주입해, "잘못된 콘텐츠를 주면 정확히 이런 에러가 나야
+  // 한다"를 검증한다.
   it("rejects duplicate IDs, missing designs, and unsupported navigation", () => {
     const projects = structuredClone(projectsJson);
     projects.items.push(structuredClone(projects.items[0]));

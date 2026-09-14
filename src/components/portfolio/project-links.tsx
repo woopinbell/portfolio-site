@@ -9,6 +9,8 @@ import {
 } from "@/lib/portfolio";
 import { ContentLinkView } from "./content-link";
 
+// [INTV:EDGE] 데모(배포) 링크는 실제로 프로젝트가 현재 운영 중일 때만 보여준다 — 소스코드
+// 링크 등은 프로젝트 상태와 무관하게 항상 노출(죽은 데모 링크를 클릭하게 만들지 않기 위한 방어).
 function isVisibleProjectLink(project: PortfolioProject, link: ContentLink) {
   if (link.type === "demo") {
     return isProjectLive(project);
@@ -17,6 +19,9 @@ function isVisibleProjectLink(project: PortfolioProject, link: ContentLink) {
   return true;
 }
 
+// [INTV:ARCH] ProjectLinks(상세 페이지용)와 ProjectCardLinks(카드용) 둘 다 "링크 목록을
+// 필터링해서 렌더링"하는 로직은 같고 어떤 링크 목록을 가져오는지(getProjectDetailLinks vs
+// getProjectCardLinks)만 다르다 — 그 공통 렌더링 부분만 이 내부 헬퍼로 뽑아 중복을 없앴다.
 function ProjectLinkList({
   contentDebug,
   homeTemplate,

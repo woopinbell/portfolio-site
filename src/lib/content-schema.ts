@@ -1,5 +1,22 @@
 import { z } from "zod";
 
+// [INTV:ARCH] 이 파일은 src/content/*.json 각각의 "정답 모양"을 zod 스키마로 정의한다 —
+// content-loader.ts가 실제 JSON을 읽을 때 이 스키마들로 검증한다. 파일 전체가 몇 가지 zod 메서드의
+// 반복이라 여기서 한 번에 정리해두고, 이후 개별 스키마 블록마다 같은 설명을 반복하지 않는다.
+// - z.object({...}): 객체의 필드 구성을 정의. 그 뒤에 이어지는 .strict() 또는 .passthrough()가
+//   "정의되지 않은 추가 필드를 만나면 어떻게 할지"를 정한다 — .strict()는 그런 필드가 있으면 검증
+//   실패(오타 잡기에 유리), .passthrough()는 그냥 통과시키고 결과 객체에 남겨둔다(주로 이 파일
+//   하단의 최상위 콘텐츠 스키마들이 나중에 필드가 늘어나도 유연하게 대응하려는 목적).
+// - z.array(schema).min(n): 배열이고 원소는 schema를 만족해야 하며 최소 n개 이상이어야 함
+// - .optional(): 이 필드가 아예 없어도 통과
+// - z.enum([...]): 주어진 문자열 값들 중 하나여야 함 (TS의 문자열 리터럴 유니언과 대응)
+// - .regex(pattern, message): 정규식에 맞지 않으면 message를 에러로 보고
+// - .refine(fn, message): 위 내장 규칙들로 표현 못 하는 커스텀 검증 로직을 직접 함수로 끼워 넣음
+//
+// [INTV:ARCH] nonEmptyString/contentId/color는 여러 스키마에서 반복해 쓰이는 "원자적 규칙"을 한
+// 곳에 정의해둔 것 — 예를 들어 contentId는 URL이나 React key로도 쓰이는 슬러그(slug) 형태를
+// 강제해, 콘텐츠 여기저기서 이 규칙이 제각각 어긋나는 걸 막는다(각 스키마마다 슬러그 정규식을
+// 따로 쓰면, 나중에 규칙을 바꿔야 할 때 모든 곳을 일일이 찾아 고쳐야 한다).
 const nonEmptyString = z.string().trim().min(1);
 const contentId = nonEmptyString.regex(
   /^[a-z0-9]+(?:[a-zA-Z0-9-]*[a-zA-Z0-9])?$/,
@@ -221,6 +238,10 @@ const homeSectionIdSchema = z.enum([
   "workMap",
 ]);
 
+// [INTV:EDGE] .refine으로 "배열 안에 같은 값이 두 번 이상 나오면 안 된다"는 규칙을 직접 구현 —
+// Set에 넣었을 때 크기가 줄어들면(중복 제거로 원소 수가 달라지면) 중복이 있었다는 뜻이다. z.enum/
+// .min만으로는 이런 "배열 내부 원소 간의 관계" 규칙을 표현할 수 없어 refine이 필요하다. 아래 두
+// 상수도 같은 패턴이라 반복 설명하지 않는다.
 const editorialHomeSectionsSchema = z
   .array(z.enum(["hero", "lead", "featured", "principles", "contact"]))
   .min(1)
@@ -941,6 +962,11 @@ export const curationContentSchema = z
   })
   .strict();
 
+// [INTV:ARCH] z.infer<typeof schema>: zod 스키마 "값"으로부터 그 스키마가 검증을 통과시킨 데이터의
+// TS "타입"을 역으로 추출하는 문법 — 스키마와 타입을 따로 두 번 작성하지 않고 스키마 하나만 진짜
+// 소스로 두는 방식이다. 이렇게 뽑아낸 타입들을 lib/portfolio/types.ts가 다시 가져다 쓴다 — 결국
+// "콘텐츠가 실제로 어떤 모양이어야 하는지"의 최종 근거는 이 파일의 zod 스키마이고, 나머지 타입들은
+// 전부 여기서 파생된다.
 export type ProjectGroup = z.infer<typeof projectGroupSchema>;
 export type ProjectMetric = z.infer<typeof projectMetricSchema>;
 export type ProjectMetricFilter = z.infer<typeof projectMetricFilterSchema>;

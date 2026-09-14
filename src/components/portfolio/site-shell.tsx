@@ -18,6 +18,10 @@ type TemplateSwitcherProps = {
   templates: PresentationTemplate[];
 };
 
+// [INTV:EDGE] 현재 경로가 이 네비게이션 링크와 일치하는지 판단 — "/"는 정확히 일치할 때만,
+// 나머지는 그 경로로 시작하는 하위 페이지까지 "현재 위치"로 쳐준다(예: /projects/foo 방문 중에도
+// "Projects" 메뉴가 활성 상태로 보이도록). "/"를 다른 경로와 같은 startsWith 규칙으로 처리하면,
+// 모든 경로가 "/"로 시작하므로 홈 메뉴가 항상 활성 상태로 보이는 버그가 생긴다.
 function isCurrentNavigation(href: string, currentPath: string | undefined) {
   if (!currentPath) return false;
   if (href === "/") return currentPath === "/";
@@ -50,6 +54,8 @@ export function SiteHeader({
         >
           {profile.handle}
         </Link>
+        {/* 데스크톱 전용 가로 내비게이션 — md 브레이크포인트 미만에서는 숨기고 아래의 <details>
+            메뉴로 대체 */}
         <nav
           aria-label={ui.primaryNavigationAriaLabel}
           className="hidden items-center gap-6 md:flex"
@@ -72,6 +78,8 @@ export function SiteHeader({
             </Link>
           ))}
         </nav>
+        {/* [INTV:ARCH] 모바일 전용 메뉴 — 여기서도 design-switcher.tsx와 같은 이유로 JS 상태
+            없이 <details>/<summary>로 드롭다운을 구현. */}
         <details className="relative md:hidden">
           <summary className="flex min-h-11 cursor-pointer list-none items-center rounded border border-line px-3 text-xs font-semibold uppercase tracking-wide text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-accent">
             {ui.menuLabel}
@@ -140,6 +148,10 @@ export function SiteFooter({
   );
 }
 
+// [INTV:ARCH] 모든 페이지(및 not-found.tsx)를 감싸는 공통 뼈대: 스킵 링크 + 헤더 + <main> +
+// 푸터. 각 디자인 테마의 route 컴포넌트들이 이 PageShell 위에 콘텐츠(children)를 채워 넣는 구조
+// (classic/design 테마만 재사용하고, editorial/brutalist/cinematic은 자체 셸을 쓴다 —
+// editorial-route.tsx 참고).
 export function PageShell({
   children,
   contentDebug,
@@ -165,6 +177,9 @@ export function PageShell({
       data-route-renderer={routeRenderer}
       data-site-design={homeTemplate}
     >
+      {/* [INTV:EDGE] "스킵 링크": 평소엔 화면 밖(top: -5rem)에 숨어 있다가 키보드로 포커스를
+          받으면(:focus) 화면 안으로 들어와, 스크린리더/키보드 사용자가 매 페이지 헤더 내비게이션을
+          일일이 거치지 않고 바로 본문(#main-content)으로 건너뛸 수 있게 해주는 접근성 관례. */}
       <a
         className="fixed left-4 top-[-5rem] z-[100] bg-foreground px-4 py-3 text-sm font-semibold text-background focus:top-4"
         href="#main-content"

@@ -14,6 +14,7 @@ import {
 import type { DesignRouteProps } from "@/designs/types";
 import { createDesignShellProps } from "@/designs/shell-props";
 
+// [INTV:ARCH] designs/classic/interview-map-route.tsx와 구조가 동일 (activeTemplate만 "design").
 export default function InterviewMapRoute({
   content,
   contentDebug,
